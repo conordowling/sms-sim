@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: sms
+      POSTGRES_PASSWORD: sms
+      POSTGRES_DB: sms_simulation
+    ports:
+      - "5432:5432"
+    # No volume: this is simulation data, meant to reset on every
+    # `docker compose down` + `up` cycle rather than persist like a real
+    # production database would.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sms -d sms_simulation"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  kafka:
+    image: apache/kafka:3.9.0
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    build: .
+    command: ["python", "migrate.py"]
+    environment:
+      DATABASE_URL: postgresql://sms:sms@postgres:5432/sms_simulation
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  provision-topic:
+    build: .
+    command: ["python", "provision_topic.py"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SENDER_REPLICAS: "${SENDER_REPLICAS:-3}"
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  sender:
+    build: .
+    command: ["python", "sender.py"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      DATABASE_URL: postgresql://sms:sms@postgres:5432/sms_simulation
+      MEAN_SEND_TIME_SECONDS: "0.1"
+      FAILURE_RATE: "0.05"
+    deploy:
+      replicas: ${SENDER_REPLICAS:-3}
+    depends_on:
+      provision-topic:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+
+  monitor:
+    build: .
+    command: ["uvicorn", "monitor:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      DATABASE_URL: postgresql://sms:sms@postgres:5432/sms_simulation
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    ports:
+      - "8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      provision-topic:
+        condition: service_completed_successfully
+
+  frontend:
+    build: ./frontend
+    environment:
+      REFRESH_INTERVAL_SECONDS: "${REFRESH_INTERVAL_SECONDS:-1}"
+    ports:
+      - "3000:80"
+    depends_on:
+      - monitor

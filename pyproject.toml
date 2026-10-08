@@ -1,0 +1,31 @@
+[project]
+name = "sms-simulation"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.142.2",
+    "uvicorn>=0.54.0",
+    "tenacity>=9.1.4",
+    "psycopg[binary,pool]>=3.3.6",
+    "aiokafka>=0.14.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.13.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "testcontainers[postgres]>=4.15.0",
+]
+
+[tool.pytest.ini_options]
+
+pythonpath = ["src"]
+testpaths = ["tests"]
+# Everything in src/ is async (Producer, Sender, MessageRecordService, the
+# FastAPI endpoints) — auto mode means `async def test_...` just works
+# without a @pytest.mark.asyncio on every single one.
+asyncio_mode = "auto"
+markers = [
+    "integration: requires a live Postgres/Kafka — see TESTING.md",
+]
