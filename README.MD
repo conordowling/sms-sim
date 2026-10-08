@@ -1,5 +1,6 @@
 # Running the simulation
 
+0. Install Docker if needed. Ex. `brew install docker`
 1. Start the stack: `docker compose up`. This starts up kafka and postgres, runs the migration and provisions the topic, starts the fleet of sender workers as well as the backend server and frontend app. Give it a minute for the stack to spin up before the frontend will be available.
 2. Open up the [simulation monitor](localhost:3000). This is where you can see the results of the simulation as well as trigger the producer to queue up messages.
 3. Click `Send Messages` to queue messages using the producer. The backend server will kick off an async process for the producer and senders will start to consume from the topic. The frontend polls every second by default to get the latest stats.
