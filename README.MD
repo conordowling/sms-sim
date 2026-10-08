@@ -7,7 +7,12 @@
 
 ## Test Suite
 
-If you just want to run the test suite stand up the docker
+If you just want to run the test suite:
+
+```bash
+uv run pytest
+```
+
 # AI Disclosure
 
 I first hand-wrote a skeleton of the architecture including interfaces and tech stack and then used Claude Sonnet to fill in the implementation details. I then manually edited the AI generated code and added comments for readability. The frontend is entirely written using AI code generation.
@@ -15,6 +20,8 @@ I first hand-wrote a skeleton of the architecture including interfaces and tech 
 # Architecture Design
 
 Tech stack uses Python for the backend and message processing, React for the frontend, Kafka for the message queue, and PostgreSQL as the database. It uses Docker to orchestrate all the services locally.
+
+The goal of the architecture is to enable horizontal scaling of both producers and senders while maintaining reliability and performance.
 
 ## Python
 
