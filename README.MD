@@ -1,10 +1,20 @@
 # Running the simulation
 
-1. Start the stack: `docker compose up`
-2. Open up the [simulation monitor](localhost:3000)
-3. Click `Send Messages` to queue messages using the producer.
-4. Watch the numbers tick up.
+1. Start the stack: `docker compose up`. This starts up kafka and postgres, runs the migration and provisions the topic, starts the fleet of sender workers as well as the backend server and frontend app. Give it a minute for the stack to spin up before the frontend will be available.
+2. Open up the [simulation monitor](localhost:3000). This is where you can see the results of the simulation as well as trigger the producer to queue up messages.
+3. Click `Send Messages` to queue messages using the producer. The backend server will kick off an async process for the producer and senders will start to consume from the topic. The frontend polls every second by default to get the latest stats.
+4. Watch the numbers tick up. You can queue up additional messages, but if you want to reset the simulation, you must `docker compose down` and then restart the stack which will start with a fresh table and topic.
 
+## Configuring the simulation
+
+- Number of messages can be configured using the field in the frontend.
+- Number of senders can be configured using `SENDER_REPLICAS`.
+- The refresh rate of the statistics can be configured using `REFRESH_INTERVAL_SECONDS`
+
+For example:
+```bash
+SENDER_REPLICAS=5 REFRESH_INTERVAL_SECONDS=2 docker compose up
+```
 ## Test Suite
 
 If you just want to run the test suite:
